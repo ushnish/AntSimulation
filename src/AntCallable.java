@@ -1,6 +1,6 @@
 import java.util.concurrent.Callable;
 
-/** numTries should be large */
+/* Each thread runs some number of simulations */
 public class AntCallable implements Callable<Long> {
 	private int dimension;
 	private int numTries;

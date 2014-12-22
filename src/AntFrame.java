@@ -1,11 +1,11 @@
 import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -89,6 +89,8 @@ public class AntFrame extends JFrame {
 		pack();
 		setVisible(true);
 	}
+	
+/* Class for launching all threads and computing average time of all the simulations */
 
 	public class Launcher extends Thread {
 
@@ -98,17 +100,18 @@ public class AntFrame extends JFrame {
 			Long totalTime = 0L;
 			button.setEnabled(false);
 			ExecutorService service = Executors.newFixedThreadPool(numThreads);
-			List<Future<Long>> futures = new ArrayList<Future<Long>>();
+			CompletionService<Long> completionService = 
+				       new ExecutorCompletionService<Long>(service);
 			long start = System.currentTimeMillis();
 			try {
 				for (int i = 0; i < numThreads; i++) {
-					AntCallable antCallable = new AntCallable(dimensions, numTrials);
-					Future<Long> future = service.submit(antCallable);
-					futures.add(future);
+					completionService.submit(new AntCallable(dimensions, numTrials));
 				}
-
-				for (Future<Long> future : futures) {
-					totalTime += future.get();
+				int received = 0;
+				/* to take results in order completed */ 
+				while (received < numThreads) {
+					totalTime += completionService.take().get();	
+					received++;
 				}
 
 			} catch (Exception ignored) {
@@ -118,6 +121,7 @@ public class AntFrame extends JFrame {
 				double value = (double) totalTime / (double) numTrials
 						/ (double) numThreads;
 				String text = Double.toString(value);
+				/* truncate string for readability */
 				result.setText(text.substring(0, Math.min(13, text.length())));
 				time.setText(Long.toString(end - start));
 				service.shutdown();
@@ -125,6 +129,7 @@ public class AntFrame extends JFrame {
 			}
 		}
 	}
+	/* Check if input is positive integer */
 	private boolean validInput(String s) {
 		boolean valid = false;
 		if (s.length() > 0 && s.matches("\\d+") && Integer.parseInt(s) > 0) {
